@@ -1,0 +1,76 @@
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 resolution;
+
+const float PI = 3.14159;
+const float RADIUS = 50.;
+
+const float CELL_SIZE = 4.;
+const float CELL_THICK = 0.5;
+const float CELL_RADIUS = .5 * CELL_SIZE - CELL_THICK;
+
+float squared_distance(const in vec2 a, const in vec2 b)
+{
+    vec2 d = a - b;
+    return dot(d, d);
+}
+
+float add_blob(const in vec2 center)
+{
+    return 1.5e5 / (1. + squared_distance(gl_FragCoord.xy, center));
+}
+
+void main(void)
+{
+    vec2 origin = .5 * resolution;
+
+    // Color Variation
+    vec3 color1 = vec3(1.0, 0.0, 0.0);  // Red
+    vec3 color2 = vec3(1.0, 1.0, 0.0);  // Yellow
+    vec3 color3 = vec3(0.0, 1.0, 0.0);  // Green
+
+    float v =
+        add_blob(origin + vec2(150. * sin(2.1 + 1.6 * time), 205. * cos(5.7 + 1.8 * time))) +
+        add_blob(origin + vec2(100. * cos(.5 + 2.1 * time), 100. * sin(7.5 + 5.2 * time))) +
+        add_blob(origin + vec2(60. * sin(.3 + 1.6 * time), 200. * cos(3.3 + 1.6 * time)));
+    
+    float w = v - RADIUS;
+    
+    float r = pow(1. + pow(w, 2.), -.2) * CELL_RADIUS;
+
+    vec2 offs = vec2(step(CELL_SIZE, mod(gl_FragCoord.y, 2. * CELL_SIZE)) * .5 * CELL_SIZE, 0);
+    vec2 cell_center = offs + CELL_SIZE * floor((gl_FragCoord.xy - offs) / CELL_SIZE) + .5 * vec2(CELL_SIZE, CELL_SIZE);
+    float d = distance(gl_FragCoord.xy, cell_center);
+    float c = smoothstep(r + CELL_THICK, r, d);
+    
+    // Dynamic Animation
+    float rotationSpeed = 1.5;
+    float rotationAngle = time * rotationSpeed;
+    vec2 rotatedUV = vec2(
+        cos(rotationAngle) * (gl_FragCoord.x - resolution.x * 0.5) - sin(rotationAngle) * (gl_FragCoord.y - resolution.y * 0.5),
+        sin(rotationAngle) * (gl_FragCoord.x - resolution.x * 0.5) + cos(rotationAngle) * (gl_FragCoord.y - resolution.y * 0.5)
+    );
+
+    vec3 finalColor = mix(color1, mix(color2, color3, c), c);
+    
+    // Background
+    vec3 backgroundColor1 = vec3(1.0, 0.0, 0.0);  // Red
+    vec3 backgroundColor2 = vec3(1.0, 1.0, 0.0);  // Yellow
+    vec3 backgroundColor3 = vec3(0.0, 1.0, 0.0);  // Green
+
+    float transitionSpeed = 1.0;  // Adjust the transition speed
+    float transitionPhase = time * transitionSpeed;
+
+    float transitionFactor = abs(sin(transitionPhase));  // Varies between 0 and 1
+
+    vec3 background = mix(
+        mix(backgroundColor1, backgroundColor2, transitionFactor),
+        backgroundColor3,
+        transitionFactor
+    );
+
+    gl_FragColor = vec4(finalColor, 1) + vec4(background, 1);
+}
